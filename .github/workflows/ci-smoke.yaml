@@ -1,0 +1,34 @@
+name: CI - Build & Smoke Test
+
+on:
+  push:
+    branches:
+      - main
+      - kafka-zookeeper-external-k8s-edge-server-cicd-vm
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Python syntax check (Edge & Server)
+        run: |
+          python -m py_compile edge/main.py
+          python -m py_compile server/main.py
+
+      - name: Docker build – Edge (NO CACHE)
+        run: docker build --no-cache -f docker/Dockerfile.edge -t edge:ci .
+
+      - name: Docker build – Server (NO CACHE)
+        run: docker build --no-cache -f docker/Dockerfile.server -t server:ci .
+
+      - name: Docker images created
+        run: docker images
+

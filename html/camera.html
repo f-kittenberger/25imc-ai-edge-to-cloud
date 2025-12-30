@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>Edge Camera Source</title>
+</head>
+<body>
+
+<!-- Video kann sichtbar sein (Debug). 
+     Für Produktion einfach style="display:none" setzen -->
+<video id="video"
+       autoplay
+       playsinline
+       width="640"
+       height="480"
+       style="border:1px solid red;">
+</video>
+
+<canvas id="canvas"
+        width="640"
+        height="480"
+        style="display:none;">
+</canvas>
+
+
+<script>
+const video = document.getElementById("video");
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+// Kamera starten (OS-verwaltet, stabil)
+navigator.mediaDevices.getUserMedia({ video: true })
+  .then(stream => {
+    video.srcObject = stream;
+    console.log("Camera started");
+  })
+  .catch(err => {
+    console.error("Camera error:", err);
+  });
+
+// Alle 1 Sekunde ein JPEG-Frame senden
+setInterval(() => {
+  if (video.videoWidth === 0) return;
+
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+  // JPEG mit moderater Qualität (Performance!)
+  const jpg = canvas.toDataURL("image/jpeg", 0.7);
+
+  fetch("http://localhost:9001/frame", {
+    method: "POST",
+    body: jpg
+  }).catch(err => {
+    console.error("Send error:", err);
+  });
+
+}, 1000); // 1 FPS
+</script>
+
+</body>
+</html>
+

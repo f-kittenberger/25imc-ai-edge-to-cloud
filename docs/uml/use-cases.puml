@@ -1,0 +1,33 @@
+```plantuml
+@startuml
+title Architecturally Significant Use Cases
+
+actor "Edge Device" as Edge
+actor "Server Application" as Server
+actor "User" as User
+
+rectangle "AI Edge-to-Cloud System" {
+
+  usecase "UC1: Publish detection event" as UC1
+  note right of UC1
+    Defines Kafka usage,
+    message schema, and producer logic.
+  end note
+
+  usecase "UC2: Consume and process events" as UC2
+  note right of UC2
+    Determines consumer groups,
+    scalability, and reliability.
+  end note
+
+  usecase "UC3: Retrieve aggregated data" as UC3
+  note right of UC3
+    Defines REST API and data storage.
+  end note
+}
+
+Edge -- UC1
+Server -- UC2
+User -- UC3
+@enduml
+```

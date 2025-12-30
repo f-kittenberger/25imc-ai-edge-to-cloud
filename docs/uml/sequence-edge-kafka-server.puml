@@ -1,0 +1,18 @@
+```plantuml
+@startuml
+title Sequence Diagram: Edge sends detection event
+
+actor "Edge Device" as Edge
+participant "Producer App" as Producer
+participant "Kafka Broker" as Kafka
+participant "Server Consumer" as Server
+
+Edge -> Producer : start()
+loop every 5 seconds
+  Producer -> Producer : generate_event()
+  Producer -> Kafka : produce(topic, payload)
+  Kafka -> Server : deliver message
+  Server -> Server : store event
+end
+@enduml
+```

@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+
+# Virtual environments
+ai-edge-venv/
+.env/
+venv/
+
+# VS Code
+.vscode/
+
+# Logs
+*.log
+
+# Docker artifacts
+*.tar
+
+# Kubernetes local config
+*.kube/
+
+# Images & model artifacts (optional)
+*.jpg
+*.png
+*.pt
+models/

@@ -1,0 +1,30 @@
+@startuml
+title Deployment Diagram: AI Edge-to-Cloud System
+
+node "Docker Network (ai-net)" {
+
+  node "Kafka Container" as KafkaNode {
+    artifact "apache/kafka:3.7.1"
+    component "Kafka Broker (KRaft)" as Kafka
+  }
+
+  node "Edge Container" as EdgeNode {
+    artifact "Dockerfile.edge.light"
+    artifact "producer.py"
+    component "Kafka Producer" as Producer
+  }
+
+  node "Server Container" as ServerNode {
+    artifact "Dockerfile.server"
+    artifact "main.py"
+    component "Kafka Consumer" as Consumer
+    component "Flask API" as API
+  }
+}
+
+EdgeNode --> KafkaNode : publish events
+KafkaNode --> ServerNode : consume events
+
+@enduml
+
+

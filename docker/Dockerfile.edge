@@ -1,0 +1,22 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# --- System libs für OpenCV / MediaPipe (bewusst deaktiviert) ---
+RUN apt-get update && apt-get install -y \
+     libgl1 \
+     libglib2.0-0 \
+     && rm -rf /var/lib/apt/lists/*
+
+# --- Python Dependencies (Edge) ---
+COPY requirements/edge.txt /requirements/edge.txt
+RUN pip install --no-cache-dir -r /requirements/edge.txt
+
+# --- App Code ---
+COPY edge /app/edge
+
+# --- Python Path ---
+ENV PYTHONPATH=/app
+
+# --- Entry Point ---
+CMD ["python3", "/app/edge/app_edge.py"]

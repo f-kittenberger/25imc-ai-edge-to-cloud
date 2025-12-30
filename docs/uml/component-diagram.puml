@@ -1,0 +1,34 @@
+@startuml
+title Component Diagram: Edge-to-Cloud Kafka System
+
+package "Edge Application" {
+  component "Event Generator" as Gen
+  component "Kafka Producer Adapter" as Prod
+
+  Gen --> Prod : create event
+}
+
+package "Server Application" {
+  component "Kafka Consumer Adapter" as Cons
+  component "Data Handler" as Handler
+  component "Flask API" as API
+
+  Cons --> Handler : deliver event
+  Handler --> API : expose data
+}
+
+component "Kafka Broker" as Kafka
+
+Prod --> Kafka : produce(JSON)
+Kafka --> Cons : consume(JSON)
+
+note right of Prod
+Uses confluent-kafka Producer
+end note
+
+note right of Cons
+Uses confluent-kafka Consumer
+end note
+
+@enduml
+

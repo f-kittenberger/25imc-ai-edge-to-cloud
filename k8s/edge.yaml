@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: edge
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: edge
+  template:
+    metadata:
+      labels:
+        app: edge
+    spec:
+      containers:
+        - name: edge
+          image: edge-producer:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 9001   # ← Flask hört hier
+          env:
+            - name: BOOTSTRAP_SERVERS
+              value: "34.67.127.119:9092"
+            - name: TOPIC
+              value: edge-data
+
+
+  
+

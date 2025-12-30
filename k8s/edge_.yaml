@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: edge
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: edge
+  template:
+    metadata:
+      labels:
+        app: edge
+    spec:
+      containers:
+        - name: edge
+          # ORIGINAL (stabil, Dummy-Kafka)
+          # image: edge-producer:latest
+
+          # PHASE A (OpenCV + NumPy)
+          image: edge-producer:phase-a
+          imagePullPolicy: IfNotPresent
+
+          env:
+            - name: BOOTSTRAP_SERVERS
+              value: "34.67.127.119:9092"
+            - name: TOPIC
+              value: edge-data
+
+          volumeMounts:
+            - name: frames
+              mountPath: /frames
+
+      volumes:
+        - name: frames
+          hostPath:
+            path: /home/aichmi14/edge_frames
+            type: DirectoryOrCreate
+  
+

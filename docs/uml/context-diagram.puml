@@ -1,0 +1,16 @@
+@startuml
+title Context Diagram: AI Edge-to-Cloud System
+
+actor "System Operator" as User
+actor "Edge Device (Raspberry Pi)" as Edge
+
+rectangle "AI Edge-to-Cloud System" as System {
+  component "Kafka-based Messaging System" as Kafka
+}
+
+Edge --> System : sends detection events
+User --> System : views aggregated data
+
+@enduml
+
+
