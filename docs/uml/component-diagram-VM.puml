@@ -1,0 +1,43 @@
+@startuml Component Diagram
+!theme plain
+title Component Diagram: Edge-to-Cloud with AI & Green Monitoring
+
+package "Edge Device" {
+    component "Camera" as Cam
+    component "Edge App (Inference)" as EdgeApp
+    component "Kafka Producer" as Producer
+    
+    Cam -> EdgeApp : Video Frames
+    EdgeApp -> Producer : JSON (Persons Detected)
+}
+
+cloud "Messaging Layer" {
+    component "Kafka Cluster" as Kafka
+}
+
+package "Google Cloud VM" {
+    component "Server Consumer" as Server
+    
+    package "Monitoring & Green Logic" {
+        component "Prometheus" as Prom
+        component "Grafana" as Grafana
+        component "Carbon Bridge\n(Flask)" as Carbon
+        component "Green Region Chooser\n(Script)" as Chooser
+    }
+}
+
+cloud "External Services" {
+    component "Electricity Maps API" as EMaps
+}
+
+' Relations
+Producer --> Kafka : Push Events (Topic: edge-data)
+Kafka --> Server : Consume Events
+
+Server -down-> Prom : Exposes /metrics
+Carbon -down-> Prom : Exposes /metrics (Carbon Intensity)
+Prom -> Grafana : Data Source
+
+Carbon -> EMaps : Fetch CO2 Data
+Carbon --> Chooser : Triggers "Redeployment" Analysis
+@enduml

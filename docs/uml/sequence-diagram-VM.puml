@@ -1,0 +1,37 @@
+@startuml Sequence Diagram
+!theme plain
+title Sequence: Data Flow (Edge -> Kafka -> Dashboard)
+
+actor "Camera" as Cam
+actor "Local Browser\n(User accessing camera)" as Browser1
+participant "Edge Producer App\n(Docker Container)" as Edge
+participant "Kafka Broker\n(Docker Container)" as Kafka
+participant "Server App\n(Docker Container)" as Server
+participant "Prometheus\n(Docker Service)" as Prom
+participant "Grafana\n(Docker Service)" as Grafana
+
+Cam -> Browser1 : Live video stream
+Browser1 -> Edge : POST: New Frame
+activate Edge
+Edge -> Edge : Detect Faces (run AI Inference)
+Edge -> Edge : Store bounding boxes & metadata
+Edge -> Kafka : Produce JSON {persons: 3, time: ...}
+deactivate Edge
+
+activate Server
+Kafka -> Server : Consume Message
+Server -> Server : Update Internal Gauge
+deactivate Server
+
+group Monitoring Loop
+    Prom -> Server : GET /metrics
+    Server --> Prom : persons_detected{device="edge-1"} 3
+    
+    Prom -> Prom : Store Time Series
+end
+
+group Visualization
+    Grafana -> Prom : Query (avg_over_time)
+    Prom --> Grafana : Data Points
+end
+@enduml

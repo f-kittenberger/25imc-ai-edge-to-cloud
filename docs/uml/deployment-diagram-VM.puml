@@ -1,0 +1,40 @@
+@startuml Deployment Diagram
+!theme plain
+title Deployment Diagram: Cloud VM with Monitoring & Carbon Bridge
+
+node "Edge Device\n(Raspberry Pi / Laptop)" as EdgeNode {
+    node "Edge Container" {
+artifact "Camera\n(Hardware)" as Camera
+        component "Edge Inference App" as Edge
+    }
+}
+
+node "Google Cloud Platform (GCP)" {
+    node "Compute Engine VM" {
+        node "Docker Compose Environment" {
+            component "Kafka Service" as Kafka
+            component "Zookeeper"
+            
+            component "Server App\n(Flask)" as Server
+            
+            component "Prometheus"
+            component "Grafana"
+            
+            component "Carbon Bridge\n(Python/Flask)" as CarbonBridge
+        }
+    }
+}
+
+cloud "Internet" {
+    component "Electricity Maps API"
+}
+
+' Connections
+Camera --> Edge : Live video frames
+EdgeNode --> Kafka : Kafka Protocol
+Server --> Kafka : Internal Net
+Server -- Prometheus : Scrape 
+CarbonBridge -- Prometheus : Scrape 
+Prometheus -- Grafana : Query Data
+CarbonBridge --> "Electricity Maps API" : Get Carbon Intensity
+@enduml
