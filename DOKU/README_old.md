@@ -1,320 +1,198 @@
 # AI Edge-to-Cloud System
 
-## Project Overview
-Dieses Projekt implementiert ein AI Edge-to-Cloud System, bei dem Edge-Geräte Daten über eine Kafka-basierte Pipeline an einen Server in der Cloud oder im lokalen Kubernetes-Cluster senden. Die Anwendung ermöglicht Echtzeit-Verarbeitung von Sensordaten und KI-Inferenz direkt am Edge sowie Aggregation und Monitoring in der Cloud.
+## Overview
 
-## Architecture
-- **Edge Device**: Generiert Sensordaten und führt KI-Inferenz aus. Liefert Ergebnisse über Kafka.
-- **Kafka**: Zentrale Event-Streaming-Plattform, die Edge-Geräte vom Server entkoppelt.
-- **Server**: Konsumiert Kafka-Nachrichten, speichert die Daten und stellt REST-Endpunkte bereit.
-- **Monitoring**: Optionales Modul für Visualisierung, Logging und Carbon-Aware Adaptation.
+This project implements an edge-to-cloud architecture for real-time computer vision inference. 
+Camera frames are captured in a web browser, processed locally on an edge device, and only structured inference results are transmitted to the cloud via Apache Kafka.
 
-## Architecturally Significant Use Cases
-1. **Person Detection at the Edge**  
-   KI-basierte Analyse von Kameradaten direkt auf dem Edge-Device.
-2. **Event Streaming via Kafka**  
-   Zuverlässige, skalierbare Übertragung von Ereignissen an den Server.
-3. **Cloud-side Data Aggregation**  
-   Konsolidierung und Speicherung eingehender Daten auf dem Server.
-4. **Visualization and Monitoring**  
-   Darstellung von Live-Daten für Monitoring und Analyse.
-5. **Carbon-Aware Adaptation (geplant)**  
-   Anpassung des Systems unter Berücksichtigung von Energieverbrauch und CO₂-Emissionen.
+The system is designed for architectural clarity, traceability of design decisions, and academic evaluation rather than full-scale production deployment.
 
-## Diagrams
-- **Component Diagram**: Zeigt die einzelnen Module (Edge, Kafka, Server) und deren Schnittstellen.
-- **Deployment Diagram**: Stellt dar, wie Komponenten in Kubernetes oder auf VMs bereitgestellt werden.
-- **Sequence Diagrams**: Zeigt Datenfluss und Interaktionen für jeden Use Case.
+---
 
-## Deployment
+## Architecture Overview
 
-### Local (Docker)
-Stelle sicher, dass Docker APP läuft.
+The architecture follows a strict edge-first approach:
 
+**Browser (Camera)**
+→ HTTP POST  
+→ **Edge Application**
+→ AI Inference  
+→ **Kafka**
+→ **Cloud Server**
+→ Storage, Metrics, Visualization
 
-eval $(minikube docker-env)
-minikube start
+All asynchronous communication between edge and cloud components is handled exclusively via Kafka.
 
-docker build -f docker/Dockerfile.edge -t edge:latest .
-docker build -f docker/Dockerfile.server -t server:latest .
+---
 
-### Kubernetes (Minikube)
-### service entry added to kafka.yaml
-kubectl apply -f k8s/kafka.yaml
-kubectl apply -f k8s/server.yaml
-kubectl apply -f k8s/edge.yaml
-kubectl apply -f k8s/prometheus.yaml
-kubectl apply -f k8s/grafana.yaml
+## End-to-End Data Flow
 
-kubectl get pods -A
-kubectl get svc
+1. A browser captures camera frames and sends them via HTTP POST to the edge application.
+2. The edge application stores the most recent frame temporarily.
+3. AI inference runs periodically on the edge device.
+4. Inference results are serialized as JSON and published to Kafka.
+5. A cloud-based server consumes Kafka messages.
+6. The server exposes stored data and metrics via REST endpoints.
+7. The browser retrieves bounding box data for visualization.
 
-kubectl logs -l app=edge -f
-kubectl logs -l app=server -f
-kubectl port-forward deployment/server 5000:5000
-curl http://127.0.0.1:5000/data
+---
 
-k9s for overview
-## Restart Pods e.g. server
-kubectl delete pod -l app=server
-minikube stop
+## Edge Application
 
-## Manually push data for testing
-curl -X POST http://localhost:5000/data -H "Content-Type: application/json" -d '{"persons_detected": 5, "device_id": "camera-01"}'
+### Responsibilities
 
-## Prometheus
-kubectl port-forward svc/prometheus 9090:9090
-visit http://127.0.0.1:9090/query
+- Receive camera frames via HTTP
+- Store the most recent frame ephemerally
+- Execute AI inference periodically
+- Publish inference results to Kafka
+- Provide bounding box data for browser visualization
 
-## Grafana
-kubectl -n observability port-forward svc/grafana 3000:3000
-http://127.0.0.1:3000/?orgId=1
-User admin
-PW admin (changed to edge-to-AI)
+### Technical Characteristics
 
-## Data Flow Overview
+- Implemented as a single Flask application
+- Stateless design (no persistent storage)
+- Background threads for inference and Kafka publishing
+- No frontend assets served from the container
 
-In the current setup, all data is transmitted via **Kafka**. The HTTP POST endpoint on the server is only used for optional testing or direct queries.
-Edge Device
-│
-│ produces events
-▼
-Kafka Topic: edge-data
-│
-│ consumed by
-▼
-Server Application
-│
-│ stores and processes
-▼
-Data Store / Monitoring
+### HTTP Endpoints
 
+| Endpoint      | Method | Description |
+|---------------|--------|-------------|
+| `/frame`      | POST   | Receives a Base64-encoded JPEG frame |
+| `/frame_data` | GET    | Returns latest bounding boxes |
 
+---
 
-- **Edge → Kafka**: The edge devices produce inference results (person detection etc.) and send them to the Kafka topic `edge-data`.
-- **Server → Kafka**: The server consumes the `edge-data` topic using a Kafka consumer and appends the data to its internal store.
-- **HTTP POST**: Only used optionally for debugging or testing, not part of the main production flow.
+## AI Inference
 
-**Summary:** Kafka acts as the central event bus, decoupling edge and server components and ensuring a scalable, fault-tolerant communication channel.
+- Primary signal: MediaPipe Face Detection
+- Optional: Pose Detection for visualization
+- A person is counted when at least one face is detected
 
+### Output Schema Example
 
-Apache Kafka is used as a central event streaming platform to decouple edge devices from cloud services, enabling reliable, scalable, and fault-tolerant transmission of AI inference results.
+```json
+{
+  "device_id": "edge-laptop-01",
+  "timestamp": "2026-01-02T10:48:43Z",
+  "persons_detected": 1,
+  "faces": [
+    {
+      "conf": 0.93,
+      "xmin": 0.45,
+      "ymin": 0.29,
+      "width": 0.22,
+      "height": 0.30
+    }
+  ]
+}
+```
 
+---
 
+## Messaging Layer (Kafka)
 
-✅ FINAL RUNBOOK – Edge → Kafka → Server (funktionierend)
+- Apache Kafka is used as the central asynchronous messaging backbone.
+- Kafka runs with ZooKeeper using Docker Compose on a dedicated virtual machine.
+- The edge application acts as a Kafka producer.
+- The cloud server acts as a Kafka consumer.
 
-Ziel:
-Edge (K8s) sendet Daten → Kafka (Docker Compose) → Server (K8s) empfängt & verarbeitet
+Kafka is the only mechanism for edge-to-cloud data transfer.
 
-🔹 0. Voraussetzungen
+---
 
-Docker läuft
+## Cloud Server
 
-Minikube läuft
+### Responsibilities
 
-Projektverzeichnis: ~/ai-edge-to-cloud
+- Consume Kafka events
+- Store inference results
+- Expose REST APIs for data access
+- Export Prometheus-compatible metrics
 
-🔹 1. Kafka + Zookeeper (Docker Compose, extern)
-📁 Verzeichnis
-cd ~/ai-edge-to-cloud/kafka-compose
+### Endpoints
 
-▶️ Start
-docker compose down -v
-docker compose up -d
+| Endpoint   | Description |
+|------------|-------------|
+| `/data`    | Returns stored inference events |
+| `/metrics` | Prometheus metrics endpoint |
 
-✅ Prüfen
-docker ps
+---
 
+## Visualization and Observability
 
-Erwartet:
+- Bounding boxes are rendered in the browser by polling the edge application.
+- Prometheus scrapes metrics from the cloud server.
+- Grafana dashboards visualize:
+  - Detected persons
+  - System performance metrics
 
-kafka-compose-kafka-1
+---
 
-kafka-compose-zookeeper-1
+## Containerization and Kubernetes Usage
 
-🔹 2. Kafka-Konfiguration verifizieren (entscheidend!)
-docker exec kafka-compose-kafka-1 bash -c 'env | grep ADVERTISED'
+All components are containerized using Docker.
 
+Kubernetes (Minikube) is used locally **only for development purposes**:
+- Container lifecycle management
+- Restart behavior
+- Isolation during development
 
-MUSS sein:
+Kafka and ZooKeeper are explicitly **not deployed on Kubernetes**.
 
-KAFKA_ADVERTISED_LISTENERS=INTERNAL://kafka:29092,EXTERNAL://192.168.49.2:9092
+Browser-to-edge communication is exposed using `kubectl port-forward`.
 
-🔹 3. Kafka Topic anlegen
-docker exec kafka-compose-kafka-1 kafka-topics \
-  --bootstrap-server kafka:29092 \
-  --create --if-not-exists \
-  --topic edge-data \
-  --partitions 1 \
-  --replication-factor 1
+This decision is documented in **ADR-002**.
 
-Prüfen:
-docker exec kafka-compose-kafka-1 kafka-topics \
-  --bootstrap-server kafka:29092 --list
+---
 
+## Architecture Decision Records (ADRs)
 
-Erwartet:
+Architectural decisions are documented as ADRs to ensure traceability and evaluability.
 
-edge-data
+### ADR-002 – Containerization and Kubernetes Usage
+- Docker as the primary packaging mechanism
+- Kubernetes limited to local development usage
+- Kafka excluded from Kubernetes deployment
 
-🔹 4. Minikube-IP ermitteln (für K8s)
-minikube ip
+→ See: `docs/adr/adr-002-containerization-and-kubernetes-usage.md`
 
+### ADR-004 – Kafka Deployment with ZooKeeper (Non-KRaft)
+- ZooKeeper-based Kafka deployment
+- KRaft mode explicitly excluded from the current scope
 
-📌 In deinem Fall:
+→ See: `docs/adr/adr-004-kafka-deployment-with-zookeeper.md`
 
-192.168.49.2
+---
 
-🔹 5. Edge Deployment (Kubernetes)
-k8s/edge.yaml
-env:
-  - name: BOOTSTRAP_SERVERS
-    value: 192.168.49.2:9092
+## UML and Architectural Modeling
 
-Anwenden + Neustart
-cd ~/ai-edge-to-cloud
-kubectl apply -f k8s/edge.yaml
-kubectl delete pod -l app=edge
+- Component diagrams reflect actual code modules
+- Deployment diagrams focus on nodes, containers, and infrastructure
+- Sequence diagrams model meaningful runtime scenarios
+- Trivial or redundant diagrams are intentionally excluded
 
-Logs prüfen
-kubectl logs -l app=edge -f
+All diagrams are accompanied by textual explanations to ensure clarity.
 
+---
 
-Erwartet:
+## CI/CD and Sustainability
 
-[EDGE] Sent: {...}
+- CI pipelines validate builds and container images
+- Edge inference reduces cloud compute load
+- Kafka avoids continuous HTTP streaming
+- Reduced network traffic contributes to lower energy consumption
 
-🔹 6. Server Deployment (Kubernetes)
-k8s/server.yaml
-env:
-  - name: BOOTSTRAP_SERVERS
-    value: 192.168.49.2:9092
+---
 
-Anwenden + Neustart
-kubectl apply -f k8s/server.yaml
-kubectl delete pod -l app=server
+## Design Principles
 
-Prüfen: Env im Pod
-kubectl exec -it $(kubectl get pod -l app=server -o jsonpath='{.items[0].metadata.name}') -- env | grep BOOTSTRAP
+- Edge-first processing
+- Stateless components
+- Explicit data flow
+- Separation of concerns
+- Architectural decisions documented and justified
 
-
-Erwartet:
-
-BOOTSTRAP_SERVERS=192.168.49.2:9092
-
-🔹 7. ✅ FINALER BEWEIS – Server empfängt Kafka-Daten
-kubectl logs -l app=server -f
-
-
-🎉 Erwartet (Beweis):
-
-[SERVER] Received via Kafka: {...}
-
-
-➡️ Edge → Kafka → Server läuft
-
-🔹 8. (Optional) HTTP-Endpunkt prüfen
-kubectl port-forward svc/server 5000:5000
-curl http://localhost:5000/data
-
-
-Erwartet:
-
-[
-  {
-    "device_id": "edge-1",
-    "timestamp": "...",
-    "persons_detected": 24
-  }
-]
-
-🧠 Architektur-Entscheidung (für Doku / ADR)
-
-Kafka außerhalb von Kubernetes
-
-Begründung:
-
-stabileres lokales Setup
-
-weniger Stateful-Komplexität
-
-saubere Netzwerkgrenzen
-
-realitätsnah für Edge/Cloud-Szenarien
-
-Kubernetes nutzt Kafka als externen Event-Bus
-
-Komponente	Läuft wo?
-Kafka	❌ Minikube → ✅ Docker (VM)
-Zookeeper	❌ Minikube → ✅ Docker (VM)
-Edge	✅ Minikube
-Server	✅ Minikube
-CI/CD	✅ VM / GitHub
-Verbindung	Minikube → VM IP
-
-✅ Sauber alles runterfahren (ohne Datenverlust)
-1️⃣ Kubernetes / Minikube (falls noch läuft)
-minikube stop
-
-
-(oder minikube delete, wenn du Speicher brauchst – Code bleibt)
-
-2️⃣ Kafka & Zookeeper (Docker Compose)
-cd ~/ai-edge-to-cloud/kafka-compose
-docker compose down
-
-3️⃣ Docker generell beruhigen
-docker ps
-
-
-➡️ sollte leer sein oder nur Systemcontainer zeigen
-
-Optional:
-
-docker system prune
-
-
-
-VM instanz starten
-
-source ai-edge-venv/bin/activate
-
-minicube start
-
-cd ~/ai-edge-to-cloud/kafka-compose
-
-docker compose down -v
-
-docker compose up -d
-
-docker ps
-
-Erwartet:
-
-kafka-compose-kafka-1
-
-kafka-compose-zookeeper-1
-
-🔹 2. Kafka-Konfiguration verifizieren (entscheidend!)
-docker exec kafka-compose-kafka-1 bash -c 'env | grep ADVERTISED'
-
-
-MUSS sein:
-
-KAFKA_ADVERTISED_LISTENERS=INTERNAL://kafka:29092,EXTERNAL://192.168.49.2:9092
-
-🔹 3. Kafka Topic anlegen
-docker exec kafka-compose-kafka-1 kafka-topics \
-  --bootstrap-server kafka:29092 \
-  --create --if-not-exists \
-  --topic edge-data \
-  --partitions 1 \
-  --replication-factor 1
-
-Prüfen:
-docker exec kafka-compose-kafka-1 kafka-topics \
-  --bootstrap-server kafka:29092 --list
 
 
 

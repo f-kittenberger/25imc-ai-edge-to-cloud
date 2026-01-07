@@ -66,8 +66,3 @@ def data_endpoint():
 if __name__ == "__main__":
     Thread(target=kafka_loop, daemon=True).start()
     app.run(host="0.0.0.0", port=5000, use_reloader=False)
-
-
-
-
-

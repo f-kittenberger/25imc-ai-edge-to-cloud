@@ -1,33 +1,71 @@
 @startuml
-title Component Diagram: Edge-to-Cloud Kafka System
+title Browser 1 & Browser 2 Interaction with Edge + Kafka + Server
 
-package "Edge Application" {
-  component "Event Generator" as Gen
-  component "Kafka Producer Adapter" as Prod
+actor Browser1
+actor Browser2
 
-  Gen --> Prod : create event
+database "Local Camera (Hardware-dependent)" as Camera
+
+package "Kubernetes Cluster" {
+    node "Edge Deployment (Containerized)" {
+        component "app_edge.py" as EdgeApp
+        component "infer_face_pose.py" as Inference
+        component "Edge Flask /frame & /frame_data" as EdgeFlask
+        component "Internal Storage (/tmp/frame.jpg & JSON)" as Storage
+    }
 }
 
-package "Server Application" {
-  component "Kafka Consumer Adapter" as Cons
-  component "Data Handler" as Handler
-  component "Flask API" as API
-
-  Cons --> Handler : deliver event
-  Handler --> API : expose data
+package "Messaging Layer" {
+    component "Kafka Broker (with Zookeeper)" as Kafka
 }
 
-component "Kafka Broker" as Kafka
+package "Server Container" {
+    component "Server Consumer" as Consumer
+    component "Flask REST API /data" as API
+}
 
-Prod --> Kafka : produce(JSON)
-Kafka --> Cons : consume(JSON)
+'------------------------
+' Browser 1 flow (direct camera interaction)
+'------------------------
+Browser1 -> Camera : live video
+Camera --> Browser1 : video stream
 
-note right of Prod
-Uses confluent-kafka Producer
-end note
+Browser1 -> EdgeFlask : POST /frame\n(JPEG/Base64)
 
-note right of Cons
-Uses confluent-kafka Consumer
+
+EdgeFlask --> Storage : save frame
+
+Browser1 <- EdgeFlask : JSON\n(Bounding Boxes & Metadata)
+
+
+
+'------------------------
+' Internal Edge flow
+'------------------------
+EdgeApp --> Inference : process frame from /tmp/frame.jpg
+Inference --> Storage : update bounding boxes & metadata
+EdgeApp --> EdgeFlask : provide /frame_data endpoint
+EdgeApp --> Kafka : produce(JSON bounding boxes + metadata)
+
+'------------------------
+' Kafka → Server flow
+'------------------------
+Kafka --> Consumer : consume(JSON)
+Consumer --> API : forward processed data
+
+'------------------------
+' Browser 2 flow (VM / Server API)
+'------------------------
+Browser2 -> API : GET /data
+
+'------------------------
+' Kubernetes Note
+'------------------------
+note right of EdgeApp
+Runs inside Kubernetes Deployment:
+- Pod(s) scalable
+- Platform-independent
+- Port-forward exposes /frame endpoint for Browser1
 end note
 
 @enduml

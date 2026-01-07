@@ -1,0 +1,104 @@
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.3
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+    restart: unless-stopped
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.3
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+
+      KAFKA_LISTENERS: INTERNAL://0.0.0.0:29092,EXTERNAL://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:29092,EXTERNAL://34.67.127.119:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    restart: unless-stopped
+
+  server:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.server   # uses Python 3.11-slim Dockerfile
+    container_name: edge_server
+    environment:
+      BOOTSTRAP_SERVERS: "kafka:29092"   # internal broker for containers
+      GROUP_ID: "server-group"
+    ports:
+      - "5000:5000"     # exposes /data and /metrics to the host
+    restart: unless-stopped
+    depends_on:
+      - kafka
+    healthcheck:
+      # checks the Flask app's health via /metrics (HTTP 200 when up)
+      test: ["CMD-SHELL", "wget --spider -q http://localhost:5000/metrics || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    volumes:
+      - ../monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    environment:
+      GF_INSTALL_PLUGINS: "hamedkarbasi93-kafka-datasource"
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+  node_exporter:
+    image: prom/node-exporter:latest
+    container_name: node_exporter
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--path.rootfs=/rootfs'
+    ports:
+      - "9100:9100"
+    restart: unless-stopped
+
+  carbon-bridge:
+    image: python:3.9-slim
+    container_name: carbon_bridge
+    volumes:
+      - ../monitoring/carbon_bridge.py:/app/carbon_bridge.py
+      - ../monitoring/choose_green_region.py:/app/choose_green_region.py
+      - ../monitoring/region_map.json:/app/region_map.json
+      - ./.env:/app/.env
+    working_dir: /app
+    command: >
+      sh -c "pip install --no-cache-dir requests prometheus_client python-dotenv flask && python carbon_bridge.py"
+    env_file:
+      - .env
+    ports:
+      - '${EXPORTER_PORT:-9091}:9091'
+    restart: unless-stopped
+
+volumes:
+  prometheus_data:
+  grafana_data:

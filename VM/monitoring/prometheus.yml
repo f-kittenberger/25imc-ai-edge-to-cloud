@@ -1,0 +1,20 @@
+global:
+  scrape_interval: 5s
+
+scrape_configs:
+  - job_name: "edge_server"
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['server:5000']
+  - job_name: 'node'
+    static_configs:
+      - targets: ['node_exporter:9100']      
+    relabel_configs:
+      # This extracts the region from the __meta_gce_zone label
+      - source_labels: [__meta_gce_zone]
+        regex: "(.*)-[a-z]$"
+        target_label: region
+        replacement: "${1}"
+  - job_name: 'carbon-intensity'
+    static_configs:
+      - targets: ['carbon-bridge:9091']

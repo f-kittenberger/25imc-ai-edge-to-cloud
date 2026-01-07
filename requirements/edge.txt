@@ -2,8 +2,9 @@ confluent-kafka==2.4.0
 requests
 flask
 opencv-python-headless
-mediapipe
+mediapipe==0.10.14
 numpy
+flask-cors
 
 
 

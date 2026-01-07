@@ -1,27 +1,62 @@
 @startuml
 title Container Diagram: AI Edge-to-Cloud System
 
+' --------------------
+' Edge Layer
+' --------------------
 package "Edge Layer" {
-  component "Edge Producer\n(Docker Container)" as Producer
+  [Edge Application\n(Docker Container)] as Edge
 }
 
+' --------------------
+' Messaging Layer
+' --------------------
 package "Messaging Layer" {
-  component "Kafka Broker\n(KRaft Mode)" as Kafka
+  [Zookeeper\n(Docker Container)] as ZK
+  [Kafka Broker\n(Docker Container)] as Kafka
 }
 
+' --------------------
+' Cloud Layer
+' --------------------
 package "Cloud Layer" {
-  component "Server Consumer\n(Docker Container)" as Consumer
-  component "Flask REST API" as API
+  [Server Application\n(Docker Container)] as Server
 }
 
-package "User Layer" {
-  component "Web Browser" as Browser
-}
+' --------------------
+' Static container dependencies
+' --------------------
+Edge --> Kafka : depends on
+Server --> Kafka : depends on
+Kafka --> ZK : depends on
 
-Producer --> Kafka : produce(JSON events)
-Kafka --> Consumer : consume(events)
-Consumer --> API : forward data
-Browser --> API : HTTP GET /data
+' --------------------
+' Notes
+' --------------------
+note right of Edge
+Runs on an edge device
+(Laptop, Raspberry Pi, etc.)
+Contains inference logic
+and Kafka producer
+end note
+
+note right of Server
+Runs in cloud / VM
+Contains Kafka consumer
+and Flask-based API
+end note
+
+note right of Kafka
+Apache Kafka broker
+for asynchronous messaging
+end note
+
+note right of ZK
+Zookeeper for Kafka
+coordination and metadata
+end note
 
 @enduml
+
+
 

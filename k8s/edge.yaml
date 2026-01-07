@@ -17,13 +17,17 @@ spec:
           image: edge-producer:latest
           imagePullPolicy: IfNotPresent
           ports:
-            - containerPort: 9001   # ← Flask hört hier
+            - containerPort: 9001   # ← Flask listed here
           env:
             - name: BOOTSTRAP_SERVERS
               value: "34.67.127.119:9092"
             - name: TOPIC
               value: edge-data
-
+            # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+            # New – stabile Edge-Identity
+            - name: DEVICE_ID
+              value: "edge-laptop-03"
+            # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
   
 

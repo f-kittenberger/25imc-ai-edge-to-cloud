@@ -178,28 +178,6 @@ Any future changes (scaling, exposure, persistence) should be introduced explici
 
 
 
-## CI/CD (Development-Oriented)
-
-- CI/CD pipeline for development and architectural validation only
-- Triggered on feature branch push or manually (`workflow_dispatch`)
-- Uses a **self-hosted GitHub runner** installed on the development machine for local Minikube tests
-- Runs in two stages:
-
-  1. **Build & Test (GitHub Cloud)**  
-     - Checkout code, Python syntax checks, optional unit tests  
-     - Build deterministic Docker images for Edge and Server  
-     - No deployment to cluster  
-
-  2. **Smoke Test & Local Deployment (Self-Hosted Runner)**  
-     - Runs on the self-hosted runner  
-     - load Docker images into Minikube  
-     - Deploy Edge pod, test `/frame` endpoint  
-     - No automatic production rollout  
-     - Local validation only  
-
-- Sustainability-aware deployment planned but not yet implemented
-
-```text
         ┌───────────────┐
         │ Browser 1     │
         │ (Laptop)      │
@@ -233,9 +211,12 @@ Any future changes (scaling, exposure, persistence) should be introduced explici
         │ /data          │
         │ Grafana UI     │
         └────────────────┘
-```
 
-```text
+
+
+
+
+
 ai-edge-to-cloud/
 ├── .git/
 ├── .github/
@@ -248,12 +229,13 @@ ai-edge-to-cloud/
 │   ├── adr/
 │   │   ├── 001-kafka.md
 │   │   ├── 002-kubernetes.md
-│   │   └── ...
+│   │   └── ... 
 │   └── uml/
 │       ├── component-diagram.puml
 │       ├── deployment-diagram.puml
 │       ├── sequence-edge-kafka-server.puml
-│       └── ...
+│       └── ....
+├── DOKU/
 ├── edge/
 │   ├── __init__.py
 │   ├── app_edge.py
@@ -263,18 +245,49 @@ ai-edge-to-cloud/
 │   └── hw/
 │       ├── __init__.py
 │       └── frame_receiver.py
-├── VM/
-|   ├── server/
-│   |    ├── __init__.py
-│   |    └── main.py
-│   ├── docker-compose.yaml
-│   ├── Dockerfile.server
-│   ├── grafana.yaml
+├── grafana/
+├── html/
+│   └── camera.html
+├── k8s/
+│   ├── edge.yaml
 │   ├── server.yaml
-│   ├── server.txt
-│   └── doku VM kafka.md
+│   ├── grafana.yaml
+│   └── prometheus.yaml
+├── kafka-compose/
+│   └─── docker-compose.yaml
+├── requirements/
+│   └── edge.txt
+├── server/
+│   ├── __init__.py
+│   └── main.py
+├── .dummy
+├── .gitignore
+├── minikube_latest_amd64.deb
 └── README.md
-```
+
+
+
+
+## CI/CD (Development-Oriented)
+
+- CI/CD pipeline for development and architectural validation only
+- Triggered on feature branch push or manually (`workflow_dispatch`)
+- Uses a **self-hosted GitHub runner** installed on the development machine for local Minikube tests
+- Runs in two stages:
+
+  1. **Build & Test (GitHub Cloud)**  
+     - Checkout code, Python syntax checks, optional unit tests  
+     - Build deterministic Docker images for Edge and Server  
+     - No deployment to cluster  
+
+  2. **Smoke Test & Local Deployment (Self-Hosted Runner)**  
+     - Runs on the self-hosted runner  
+     - load Docker images into Minikube  
+     - Deploy Edge pod, test `/frame` endpoint  
+     - No automatic production rollout  
+     - Local validation only  
+
+- Sustainability-aware deployment planned but not yet implemented
 
 
 
@@ -412,16 +425,16 @@ kafka-topics --bootstrap-server kafka:29092 --list
 
 
 Person detected on VM:
-
-michael_aichinger_spitz_gmail_co@instance-20251109-123917:~$ docker exec -it docker-kafka-1 bash [appuser@6aa315cc8c10 ~]$ kafka-topics --bootstrap-server localhost:9092 --list __consumer_offsets edge-data [appuser@6aa315cc8c10 ~]$ [appuser@6aa315cc8c10 ~]$ kafka-console-consumer \ > --bootstrap-server localhost:9092 \ > --topic edge-data {"device_id": "edge-laptop-03", "timestamp": "2026-01-07T11:10:37.034142", "persons_detected": 1, "faces": [{"conf": 0.7749168276786804, "xmin": 0.7125, "ymin": 0.3875, "width": 0.2046875, "height": 0.27291666666666664}]} {"device_id": "edge-laptop-02", "timestamp": "2026-01-07T11:10:39.470175", "persons_detected": 1, "faces": [{"conf": 0.7055118680000305, "xmin": 0.7671875, "ymin": 0.36041666666666666, "width": 0.16875, "height": 0.22291666666666668}]}
+{"device_id": "edge-1", "timestamp": "2025-12-30T15:14:34.678870", "persons_detected": 1, "faces": [{"conf": 0.9335712194442749, "xmin": 0.503125, "ymin": 0.3125, "width": 0.2140625, "height": 0.28541666666666665}]}
 
 
 edge:
-
-🚨 EDGE RUNNING 🚨 {'device_id': 'edge-laptop-03', 'timestamp': '2026-01-07T14:37:10.422390', 'persons_detected': 1, 'faces': [{'conf': 0.6038628816604614, 'xmin': 0.6484375, 'ymin': 0.475, 'width': 0.1828125, 'height': 0.24166666666666667}]}
+127.0.0.1 - - [30/Dec/2025 15:18:38] "POST /frame HTTP/1.1" 200 -
+🚨 EDGE RUNNING 🚨 {'device_id': 'edge-1', 'timestamp': '2025-12-30T15:18:39.503195', 'persons_detected': 1, 'faces': []}
+[EDGE] ✅ Delivered to edge-data [0] @ offset 20226
 [EDGE] wrote /tmp/frame.jpg
-127.0.0.1 - - [07/Jan/2026 14:37:11] "POST /frame HTTP/1.1" 200 -
-127.0.0.1 - - [07/Jan/2026 14:37:11] "GET /frame_data HTTP/1.1" 200 -
+127.0.0.1 - - [30/Dec/2025 15:18:39] "POST /frame HTTP/1.1" 200 -
+
 
 
 do not make sence only if shared /tem and seperate id... 

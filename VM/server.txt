@@ -1,0 +1,9 @@
+confluent-kafka==2.4.0
+requests
+flask
+prometheus_client
+json
+os
+threading
+
+

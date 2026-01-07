@@ -1,0 +1,17 @@
+FROM python:3.11-slim
+WORKDIR /app
+
+# Kopiere die Abhängigkeiten
+COPY VM/server.txt requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Kopiere den gesamten server-Ordner ins Image
+COPY VM/server/ ./server/
+
+# Arbeitsverzeichnis auf server setzen
+WORKDIR /app/server
+
+# Starte main.py
+CMD ["python3", "-u", "main.py"]
+
+

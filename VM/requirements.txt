@@ -1,0 +1,12 @@
+flask
+requests
+pydantic
+codecarbon
+ultralytics
+opencv-python-headless
+python-dotenv
+kafka-python
+pyzmq
+confluent-kafka==2.4.0
+prometheus_client
+fastapi

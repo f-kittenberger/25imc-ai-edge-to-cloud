@@ -1,16 +1,44 @@
 @startuml
-title Context Diagram: AI Edge-to-Cloud System
+title Context Diagram: AI Edge-to-Cloud System (with Monitoring)
 
 actor "System Operator" as User
-actor "Edge Device (Raspberry Pi)" as Edge
+actor "Edge Device" as Edge
 
 rectangle "AI Edge-to-Cloud System" as System {
-  component "Kafka-based Messaging System" as Kafka
+
+    note top
+    Core system functions:
+    - Edge Devices capture frames & perform inference
+    - Kafka messaging layer transports events
+    - Server aggregates data
+    - Monitoring / Data Access included: view aggregated data locally or via cloud
+    end note
 }
 
+' --------------------
+' Interactions
+' --------------------
 Edge --> System : sends detection events
-User --> System : views aggregated data
+User --> System : monitors and views aggregated data
+
+' --------------------
+' Notes
+' --------------------
+note right of Edge
+Edge device can be a laptop, Raspberry Pi, or similar
+Handles hardware-specific processing (e.g., camera)
+Data is sent via standardized Docker / Kafka pipeline
+end note
+
+note left of User
+System operator views aggregated data
+via web interface (local or cloud)
+end note
 
 @enduml
+
+
+
+
 
 

@@ -1,18 +1,45 @@
-```plantuml
 @startuml
-title Sequence Diagram: Edge sends detection event
+title Sequence Diagram: Edge-to-Cloud Event Processing with Camera & Remote User
 
-actor "Edge Device" as Edge
-participant "Producer App" as Producer
-participant "Kafka Broker" as Kafka
-participant "Server Consumer" as Server
+actor "Camera\n(Hardware on Edge Device)" as Camera
+actor "Local Browser\n(User accessing camera)" as Browser1
+actor "Remote Browser\n(User accessing Server API)" as Browser2
 
-Edge -> Producer : start()
-loop every 5 seconds
-  Producer -> Producer : generate_event()
-  Producer -> Kafka : produce(topic, payload)
-  Kafka -> Server : deliver message
-  Server -> Server : store event
-end
+participant "Edge Producer App\n(Docker Container)" as Producer
+participant "Kafka Broker\n(Docker Container)" as Kafka
+participant "Server Consumer App\n(Docker Container)" as Consumer
+participant "Cloud API (Flask)\n(Docker Container)" as API
+
+' --------------------
+' Local camera → Edge
+' --------------------
+Camera -> Browser1 : Live video stream
+Browser1 -> Producer : POST /frame (JPEG/Base64)
+Producer -> Producer : run inference
+Producer -> Producer : store bounding boxes & metadata
+
+Browser1 -> Producer : GET /frame_data
+Producer --> Browser1 : JSON (Bounding Boxes & Metadata)
+
+' --------------------
+' Edge → Kafka → Server
+' --------------------
+Producer -> Kafka : produce(event JSON)
+Kafka -> Consumer : deliver message
+Consumer -> Consumer : validate + process event
+Consumer -> API : update aggregated state
+
+' --------------------
+' Remote user access
+' --------------------
+Browser2 -> API : GET /data
+API --> Browser2 : JSON (Bounding Boxes & Metadata)
+
+note right of API
+Data exposed via REST
+for dashboards and monitoring
+end note
+
 @enduml
-```
+
+

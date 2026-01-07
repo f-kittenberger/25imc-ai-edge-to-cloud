@@ -60,7 +60,11 @@ def get_person_data(image):
             })
 
     pose_results = pose_detector.process(rgb)
-    persons_detected = 1 if pose_results.pose_landmarks else 0
+    # Statt:
+    # persons_detected = 1 if pose_results.pose_landmarks else 0
+
+    # ✅ Anzahl der Gesichter zählen
+    persons_detected = len(faces)
 
     if pose_results.pose_landmarks:
         mp_draw.draw_landmarks(

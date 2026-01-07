@@ -1,30 +1,41 @@
 @startuml
-title Deployment Diagram: AI Edge-to-Cloud System
+title Deployment Diagram: AI Edge-to-Cloud System with Camera & Remote Access
 
-node "Docker Network (ai-net)" {
-
-  node "Kafka Container" as KafkaNode {
-    artifact "apache/kafka:3.7.1"
-    component "Kafka Broker (KRaft)" as Kafka
-  }
-
-  node "Edge Container" as EdgeNode {
-    artifact "Dockerfile.edge.light"
-    artifact "producer.py"
-    component "Kafka Producer" as Producer
-  }
-
-  node "Server Container" as ServerNode {
-    artifact "Dockerfile.server"
-    artifact "main.py"
-    component "Kafka Consumer" as Consumer
-    component "Flask API" as API
-  }
+' --------------------
+' Edge Device Node
+' --------------------
+node "Edge Device\n(Laptop / Raspberry Pi)" {
+  node "Edge Application\n(Docker Container)"
+  artifact "Camera\n(Hardware)" as Camera
 }
 
-EdgeNode --> KafkaNode : publish events
-KafkaNode --> ServerNode : consume events
+' --------------------
+' Cloud VM Node
+' --------------------
+node "Cloud VM" {
+  node "Kafka Broker\n(Docker Container)"
+  node "Zookeeper\n(Docker Container)"
+  node "Server Application\n(Docker Container)"
+}
+
+' --------------------
+' Remote User
+' --------------------
+actor "Browser2\n(Accessing Server API remotely)" as RemoteUser
+
+' --------------------
+' Connections
+' --------------------
+Camera --> "Edge Application\n(Docker Container)" : Live video frames
+"Edge Application\n(Docker Container)" --> "Kafka Broker\n(Docker Container)" : Kafka protocol
+"Server Application\n(Docker Container)" --> "Kafka Broker\n(Docker Container)" : Kafka protocol
+"Kafka Broker\n(Docker Container)" --> "Zookeeper\n(Docker Container)" : coordination
+RemoteUser --> "Server Application\n(Docker Container)" : HTTP GET /data
 
 @enduml
+
+
+
+
 
 

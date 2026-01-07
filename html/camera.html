@@ -2,61 +2,81 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8">
-  <title>Edge Camera Source</title>
+  <title>Edge Camera Live</title>
+  <style>
+    #video, #canvas, #overlay {
+      border: 1px solid red;
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+    #overlay {
+      pointer-events: none;
+    }
+  </style>
 </head>
 <body>
 
-<!-- Video kann sichtbar sein (Debug). 
-     Für Produktion einfach style="display:none" setzen -->
-<video id="video"
-       autoplay
-       playsinline
-       width="640"
-       height="480"
-       style="border:1px solid red;">
-</video>
-
-<canvas id="canvas"
-        width="640"
-        height="480"
-        style="display:none;">
-</canvas>
-
+<video id="video" autoplay playsinline width="640" height="480"></video>
+<canvas id="canvas" width="640" height="480" style="display:none;"></canvas>
+<canvas id="overlay" width="640" height="480"></canvas>
 
 <script>
 const video = document.getElementById("video");
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
+const overlay = document.getElementById("overlay");
+const octx = overlay.getContext("2d");
 
-// Kamera starten (OS-verwaltet, stabil)
+// Kamera starten
 navigator.mediaDevices.getUserMedia({ video: true })
-  .then(stream => {
-    video.srcObject = stream;
-    console.log("Camera started");
-  })
-  .catch(err => {
-    console.error("Camera error:", err);
-  });
+  .then(stream => video.srcObject = stream)
+  .catch(err => console.error("Camera error:", err));
 
-// Alle 1 Sekunde ein JPEG-Frame senden
-setInterval(() => {
+// Frames alle 1 Sekunde an Pod senden
+setInterval(async () => {
   if (video.videoWidth === 0) return;
 
   ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-  // JPEG mit moderater Qualität (Performance!)
   const jpg = canvas.toDataURL("image/jpeg", 0.7);
 
-  fetch("http://localhost:9001/frame", {
-    method: "POST",
-    body: jpg
-  }).catch(err => {
+  // Frame senden
+  try {
+    await fetch("http://127.0.0.1:9001/frame", {
+      method: "POST",
+      body: jpg
+    });
+  } catch (err) {
     console.error("Send error:", err);
-  });
+  }
+
+  // Bounding Boxes abfragen
+  try {
+    const res = await fetch("http://127.0.0.1:9001/frame_data");
+    const data = await res.json();
+    octx.clearRect(0, 0, overlay.width, overlay.height);
+
+    data.faces.forEach(face => {
+      const x = face.xmin * overlay.width;
+      const y = face.ymin * overlay.height;
+      const w = face.width * overlay.width;
+      const h = face.height * overlay.height;
+
+      octx.strokeStyle = "lime";
+      octx.lineWidth = 2;
+      octx.strokeRect(x, y, w, h);
+
+      // Confidence Text
+      octx.fillStyle = "lime";
+      octx.font = "14px Arial";
+      octx.fillText((face.conf*100).toFixed(0) + "%", x, y - 4);
+    });
+  } catch (err) {
+    console.error("Bounding box fetch error:", err);
+  }
 
 }, 1000); // 1 FPS
 </script>
 
 </body>
 </html>
-

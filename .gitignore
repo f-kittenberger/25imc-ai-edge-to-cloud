@@ -27,3 +27,4 @@ venv/
 *.png
 *.pt
 models/
+*.Identifier
