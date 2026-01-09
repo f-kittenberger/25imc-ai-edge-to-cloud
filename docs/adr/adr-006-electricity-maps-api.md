@@ -1,4 +1,4 @@
-# ADR: Use of Electricity Maps API for Carbon Data
+# ADR-006: Use of Electricity Maps API for Carbon Data
 
 ## Status
 Accepted

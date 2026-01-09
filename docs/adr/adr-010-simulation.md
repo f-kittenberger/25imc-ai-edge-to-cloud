@@ -1,4 +1,4 @@
-# ADR: Simulation of Multi-Region Deployment
+# ADR-010: Simulation of Multi-Region Deployment
 
 ## Status
 Accepted

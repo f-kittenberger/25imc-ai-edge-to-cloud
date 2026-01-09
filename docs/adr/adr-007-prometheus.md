@@ -1,4 +1,4 @@
-# ADR: Prometheus for Metrics Collection
+# ADR-007: Prometheus for Metrics Collection
 
 ## Status
 Accepted
