@@ -470,7 +470,7 @@ edge_server  | [SERVER] Received via Kafka: {'device_id': 'edge-simulator-03', '
 ### Prometheus data scraping
 The server provides the data via Flask, so that Prometheus can scrape the data. 
 
-``docker-compose logs -f docker-compose logs -f --tail=20  prometheus``
+``docker-compose logs -f --tail=20  prometheus``
 
 Since we are working with a fixed IP and the GC-VM firewall is configured to allow traffic on the respective ports, we can also look at the data here and generate simple tabular data or charts:
 
@@ -510,8 +510,6 @@ To view the results of the simulation, take a look at the log of carbon-bridge
 ``docker-compose logs -f --tail=10 carbon-bridge``
 
 For a showcase there is a html interface where values can be manually set to override the scraped real-time-data and to force the redeployment simulation to be triggered.
-
-To view the results of the simulation, take a look at the log of carbon-bridge:
 
 http://34.67.127.119:9091/
 
